@@ -9,12 +9,15 @@ from pathlib import Path
 import yaml
 
 from .adapters.oryza import inspect_inputs
-from .schema import ROOT, TARGETS
+from .schema import TARGETS
+
+# 模板随包安装，非可编辑安装时同样可用。
+TEMPLATE = Path(__file__).resolve().parent / "templates/oryza"
 
 
 def prepare_workspace(destination):
     destination = Path(destination).resolve()
-    shutil.copytree(ROOT / "templates/oryza", destination)
+    shutil.copytree(TEMPLATE, destination)
     for name in ["bin", "weather", "output", "normalized"]:
         (destination / name).mkdir(exist_ok=True)
     return destination
@@ -25,6 +28,10 @@ def load_config(path):
     config = yaml.safe_load(path.read_text())
     if not isinstance(config, dict):
         raise ValueError("ORYZA 运行配置必须为字段映射")
+    for key in ["workdir", "executable", "output", "normalized_output", "asset_manifest"]:
+        value = config.get(key)
+        if value is not None and not isinstance(value, str):
+            raise ValueError(f"{key} 必须为路径字符串")
     for key in ["workdir", "executable", "normalized_output", "asset_manifest"]:
         value = config.get(key)
         if value:
@@ -49,7 +56,7 @@ def check_workspace(config_path):
         if config.get(key) is None or config.get(key) == "":
             blockers.append(f"配置未填写：{key}")
     year = config.get("year")
-    if type(year) is not int or not 1 <= year <= 9999:
+    if year not in (None, "") and (type(year) is not int or not 1 <= year <= 9999):
         blockers.append("year 必须为 1 至 9999 的整数")
     timeout = config.get("timeout", 300)
     if not isinstance(timeout, (int, float)) or isinstance(timeout, bool) or timeout <= 0:
@@ -110,7 +117,7 @@ def check_workspace(config_path):
                 errors.append("文件不存在")
             elif not re.fullmatch(r"[0-9a-fA-F]{64}", str(entry.get("sha256", ""))):
                 errors.append("SHA-256 格式无效")
-            elif hashlib.sha256(asset.read_bytes()).hexdigest() != entry["sha256"].lower():
+            elif hashlib.sha256(asset.read_bytes()).hexdigest() != str(entry["sha256"]).lower():
                 errors.append("SHA-256 不匹配")
         asset_checks[name] = {"ready": not errors, "issues": errors}
     # 防止登记的是一套资产，而实际 CONTROL 或可执行程序指向另一套文件。

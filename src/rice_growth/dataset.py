@@ -56,7 +56,9 @@ def build_windows(trajectories, forecast):
                     "cutoff": str(past.date.iloc[-1]),
                     "target_end": str(future.date.iloc[-1]),
                     "source": season.source.iloc[0],
-                    "weather_mode": "known_synthetic_scenario",
+                    "weather_source": season.weather_source.iloc[0],
+                    # 特征中的未来天气取自该生育季的实际天气序列。
+                    "weather_mode": "known_future_weather",
                 }
             )
     arrays = {}

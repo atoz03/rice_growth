@@ -1,5 +1,6 @@
 """验证量纲、信息边界、分组划分及真实 PCSE 执行链。"""
 
+from dataclasses import replace
 from datetime import date
 
 import numpy as np
@@ -7,12 +8,13 @@ import pandas as pd
 import pytest
 import yaml
 
-from rice_growth.adapters.oryza import inspect_inputs, run_oryza
+from rice_growth.adapters.oryza import OryzaAdapter, inspect_inputs, run_oryza
+from rice_growth.adapters.pcse import PcseAdapter
 from rice_growth.baseline import fit_ridge, predict_ridge
 from rice_growth.dataset import build_windows
 from rice_growth.pipeline import run_demo
-from rice_growth.schema import ROOT, TARGETS, validate_weather
-from rice_growth.weather import pcse_weather_values, synthetic_weather
+from rice_growth.schema import ROOT, TARGETS, WEATHER, Season, validate_weather
+from rice_growth.weather import attach_weather, pcse_weather_values, synthetic_weather
 
 
 def test_weather_units_and_missing_days():
@@ -92,8 +94,8 @@ def test_oryza_identifies_missing_real_inputs(tmp_path):
     assert status["missing"] == ["missing.crp"]
 
 
-def test_oryza_process_and_native_date_conversion(tmp_path):
-    # 日表解析测试程序。
+def oryza_fixture(tmp_path):
+    """日表解析测试程序及其输出映射。"""
     (tmp_path / "input").mkdir()
     (tmp_path / "input/crop.crp").write_text("测试输入")
     (tmp_path / "input/CONTROL.DAT").write_text(
@@ -112,11 +114,43 @@ def test_oryza_process_and_native_date_conversion(tmp_path):
         storage_organ_dry_kg_ha="WSO",
         dvs="DVS",
     )
+    return executable, mapping
+
+
+def test_oryza_process_and_native_date_conversion(tmp_path):
+    executable, mapping = oryza_fixture(tmp_path)
     frame = run_oryza(tmp_path, executable, "daily.dat", mapping, "test", 2024, "test", "test")
     assert frame.date.tolist() == [date(2024, 2, 29), date(2024, 3, 1)]
     assert (tmp_path / "runner.stdout.log").is_file()
     with pytest.raises(ValueError, match="输出已存在"):
         run_oryza(tmp_path, executable, "daily.dat", mapping, "test", 2024, "test", "test")
+
+
+def test_oryza_adapter_returns_states_and_weather_must_cover_dates(tmp_path):
+    executable, mapping = oryza_fixture(tmp_path)
+    start = date(2024, 2, 29)
+    weather = synthetic_weather(start, 2, 1)
+    season = Season("test", {"id": "test"}, "test", start, 1, {}, weather, "user_supplied")
+    adapter = OryzaAdapter(tmp_path, executable, "daily.dat", mapping)
+    frame = adapter.simulate(season)
+    assert not set(WEATHER) & set(frame)
+    merged = attach_weather(frame, weather)
+    assert np.isfinite(merged[WEATHER].to_numpy(float)).all()
+    with pytest.raises(ValueError, match="输出已存在"):
+        adapter.simulate(season)
+    with pytest.raises(ValueError, match="未覆盖"):
+        attach_weather(frame, synthetic_weather(date(2024, 3, 1), 2, 1))
+
+
+def test_pcse_adapter_labels_weather_source_and_requires_full_weather():
+    start = date(2021, 6, 1)
+    weather = synthetic_weather(start, 181, 1)
+    site = dict(id="test", latitude=18.0, longitude=100.0, elevation_m=50.0)
+    soil = yaml.safe_load((ROOT / "configs/demo.yaml").read_text())["soil"]
+    season = Season("test", site, "Rice_IR64", start, 180, soil, weather, "station_observed")
+    assert set(PcseAdapter().simulate(season).weather_source) == {"station_observed"}
+    with pytest.raises(ValueError, match="天气须覆盖"):
+        PcseAdapter().simulate(replace(season, weather=weather.iloc[:100]))
 
 
 def test_real_pcse_demo_end_to_end(tmp_path):
@@ -137,5 +171,31 @@ def test_real_pcse_demo_end_to_end(tmp_path):
     report = pd.read_csv(output / "metrics.csv")
     assert np.isfinite(report[["mae", "rmse"]]).all().all()
     assert set(report.model) == {"ridge_direct", "persistence"}
+    assert set(pd.read_csv(output / "weather.csv").weather_source) == {"synthetic_demo"}
+    assert "summary.txt" in metadata["files"]
+    samples = pd.read_csv(output / "samples.csv")
+    assert set(samples.weather_source) == {"synthetic_demo"}
+    assert set(samples.weather_mode) == {"known_future_weather"}
     with pytest.raises(FileExistsError):
         run_demo(config_path, output)
+
+
+def test_missing_upstream_is_reported_before_output(tmp_path, monkeypatch):
+    monkeypatch.setattr("rice_growth.pipeline.ROOT", tmp_path)
+    with pytest.raises(ValueError, match="可编辑模式"):
+        run_demo(ROOT / "configs/demo.yaml", tmp_path / "run")
+    (tmp_path / "external.lock.json").write_text((ROOT / "external.lock.json").read_text())
+    with pytest.raises(ValueError, match="bootstrap"):
+        run_demo(ROOT / "configs/demo.yaml", tmp_path / "run")
+    assert not (tmp_path / "run").exists()
+
+
+def test_incomplete_config_is_rejected_before_output(tmp_path):
+    config = yaml.safe_load((ROOT / "configs/demo.yaml").read_text())
+    del config["forecast"]["ridge_alpha"]
+    del config["sites"][0]["latitude"]
+    config_path = tmp_path / "config.yaml"
+    config_path.write_text(yaml.safe_dump(config))
+    with pytest.raises(ValueError, match=r"forecast\.ridge_alpha.*sites\[0\]\.latitude"):
+        run_demo(config_path, tmp_path / "run")
+    assert not (tmp_path / "run").exists()

@@ -8,18 +8,31 @@ import pandas as pd
 
 from ..schema import TARGETS, validate_trajectory
 
+# 上游 Oryza2000.f90 以 CHARACTER(80) 读取文件名，超长路径无法完整读入。
+MAX_PATH_LENGTH = 80
+
 
 def inspect_inputs(workdir):
     control = Path(workdir) / "input/CONTROL.DAT"
     if not control.is_file():
-        return {"ready": False, "missing": [str(control)], "references": {}}
-    # 星号行是上游输入格式中的注释；只检查实际启用的 FILEI*。
+        return {
+            "ready": False,
+            "missing": [str(control)],
+            "required_fields_missing": [],
+            "too_long": [],
+            "references": {},
+        }
+    # 星号开头的行和引号外 ! 之后的内容均为注释；只检查实际启用的 FILEI*。
     active = "\n".join(
-        line
+        re.sub(r"('[^']*')|!.*", lambda match: match.group(1) or "", line)
         for line in control.read_text(errors="replace").splitlines()
         if not line.lstrip().startswith("*")
     )
-    references = dict(re.findall(r"\b(FILEI\w*)\s*=\s*'([^']+)'", active, re.I))
+    # 上游变量名不区分大小写，统一为大写便于按字段核对。
+    references = {
+        key.upper(): value
+        for key, value in re.findall(r"\b(FILEI\w*)\s*=\s*'([^']+)'", active, re.I)
+    }
     missing = []
     for value in references.values():
         path = Path(value)
@@ -28,12 +41,14 @@ def inspect_inputs(workdir):
             or not (path if path.is_absolute() else Path(workdir) / path).is_file()
         ):
             missing.append(value)
-    required_missing = sorted({"FILEIT", "FILEI1", "FILEI2"} - {key.upper() for key in references})
+    too_long = [value for value in references.values() if len(value) > MAX_PATH_LENGTH]
+    required_missing = sorted({"FILEIT", "FILEI1", "FILEI2"} - set(references))
     # 检查品种、土壤和管理输入。
     return {
-        "ready": not required_missing and not missing,
+        "ready": not required_missing and not missing and not too_long,
         "missing": missing,
         "required_fields_missing": required_missing,
+        "too_long": too_long,
         "references": references,
     }
 
@@ -47,7 +62,11 @@ def run_oryza(workdir, executable, output, mapping, season_id, year, site_id, va
         output = workdir / output
     status = inspect_inputs(workdir)
     if not status["ready"]:
-        raise ValueError(f"ORYZA 输入不完整：{status['missing']}")
+        raise ValueError(
+            f"ORYZA 输入不完整：缺少文件 {status['missing']}，"
+            f"缺少字段 {status['required_fields_missing']}，"
+            f"路径超过 {MAX_PATH_LENGTH} 字符 {status['too_long']}"
+        )
     if not executable.is_file():
         raise ValueError(f"缺少 ORYZA 可执行文件：{executable}")
     if output.exists():
@@ -62,6 +81,8 @@ def run_oryza(workdir, executable, output, mapping, season_id, year, site_id, va
             cwd=workdir,
             capture_output=True,
             text=True,
+            # 引擎可能输出非 UTF-8 字节，替换后仍保留日志。
+            errors="replace",
             timeout=timeout,
             check=False,
         )
@@ -80,7 +101,13 @@ def run_oryza(workdir, executable, output, mapping, season_id, year, site_id, va
     missing_columns = set(mapping.values()) - set(raw.columns)
     if missing_columns:
         raise ValueError(f"逐日结果缺少映射列：{sorted(missing_columns)}")
-    frame = pd.DataFrame({k: raw[mapping[k]] for k in TARGETS})
+    frame = pd.DataFrame(index=raw.index)
+    for key in TARGETS:
+        try:
+            frame[key] = pd.to_numeric(raw[mapping[key]], errors="raise")
+        except (TypeError, ValueError) as exc:
+            # FSE 日表以 - 表示缺失值。
+            raise ValueError(f"逐日结果列 {mapping[key]} 含非数值或缺失值（-）") from exc
     if "date" in mapping:
         frame["date"] = pd.to_datetime(
             raw[mapping["date"]], format="%Y-%m-%d", errors="raise"
@@ -112,7 +139,10 @@ def run_oryza(workdir, executable, output, mapping, season_id, year, site_id, va
 
 
 class OryzaAdapter:
-    """使用已准备好的原生运行目录；天气、土壤和管理原生文件由调用方提供。"""
+    """使用已准备好的原生运行目录；天气、土壤和管理原生文件由调用方提供。
+
+    每个实例对应一个新的原生运行目录，结果已存在时拒绝再次运行，避免误读旧结果。
+    """
 
     def __init__(self, workdir, executable, output, mapping, timeout=300):
         self.options = dict(
@@ -120,14 +150,10 @@ class OryzaAdapter:
         )
 
     def simulate(self, season):
-        frame = run_oryza(
+        return run_oryza(
             **self.options,
             season_id=season.season_id,
             year=season.start.year,
             site_id=season.site["id"],
             variety=season.variety,
         )
-        weather = season.weather.copy()
-        weather["date"] = pd.to_datetime(weather.date).dt.date
-        # 按日期关联天气。
-        return frame.merge(weather, on="date", how="left", validate="one_to_one")

@@ -29,11 +29,12 @@ class Season:
     max_duration: int
     soil: dict
     weather: pd.DataFrame
+    weather_source: str
 
 
 class MechanisticAdapter(Protocol):
     def simulate(self, season: Season) -> pd.DataFrame:
-        """返回逐日标准轨迹。"""
+        """返回逐日标准状态轨迹；天气由 weather.attach_weather 按日期关联。"""
         ...
 
 

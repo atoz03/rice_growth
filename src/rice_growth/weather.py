@@ -37,7 +37,17 @@ def pcse_weather_values(row):
     )
 
 
-def pcse_provider(weather, site):
+def attach_weather(track, weather):
+    """按日期关联天气；轨迹中的每一天都必须有对应天气。"""
+    validate_weather(weather)
+    weather = weather.assign(date=pd.to_datetime(weather.date).dt.date)
+    merged = track.merge(weather, on="date", how="left", validate="one_to_one", indicator=True)
+    if not merged.pop("_merge").eq("both").all():
+        raise ValueError("天气未覆盖轨迹的全部日期")
+    return merged
+
+
+def pcse_provider(weather, site, description):
     from pcse.base import WeatherDataContainer, WeatherDataProvider
     from pcse.util import reference_ET
 
@@ -46,7 +56,7 @@ def pcse_provider(weather, site):
     provider.latitude = site["latitude"]
     provider.longitude = site["longitude"]
     provider.elevation = site["elevation_m"]
-    provider.description = ["人工天气"]
+    provider.description = [description]
     for row in weather.itertuples(index=False):
         day = pd.Timestamp(row.date).date()
         values = pcse_weather_values(row)

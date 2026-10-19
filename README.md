@@ -14,7 +14,7 @@ python3 -m venv .venv
 .venv/bin/python -m pip install --no-deps -e .
 ```
 
-上游版本固定在 `external.lock.json`。首次安装需要联网，模拟使用本地参数。PCSE 首次导入会创建 `~/.pcse`。
+上游版本固定在 `external.lock.json`。首次安装需要联网，模拟使用本地参数。PCSE 首次导入会创建 `~/.pcse`。`demo` 与 `doctor` 读取仓库中的上游和配置，须按上述方式可编辑安装；`oryza-*` 命令不依赖仓库目录。
 
 ## 运行
 

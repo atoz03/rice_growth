@@ -4,7 +4,7 @@ from datetime import timedelta
 
 import pandas as pd
 
-from ..schema import ROOT, validate_trajectory
+from ..schema import ROOT, validate_trajectory, validate_weather
 from ..weather import pcse_provider
 
 
@@ -17,10 +17,15 @@ class PcseAdapter:
         from pcse.input import WOFOST72SiteDataProvider, YAMLCropDataProvider
         from pcse.models import Wofost72_PP
 
+        end = season.start + timedelta(days=season.max_duration)
+        validate_weather(season.weather)
+        dates = pd.to_datetime(season.weather.date)
+        # 在 PCSE 运行前确认天气覆盖整个可能的生育期。
+        if dates.min() > pd.Timestamp(season.start) or dates.max() < pd.Timestamp(end):
+            raise ValueError(f"天气须覆盖 {season.start} 至 {end}")
         crop = YAMLCropDataProvider(model=Wofost72_PP, fpath=str(self.parameter_dir))
         site = WOFOST72SiteDataProvider(WAV=20.0)
         params = ParameterProvider(cropdata=crop, soildata=season.soil, sitedata=site)
-        end = season.start + timedelta(days=season.max_duration)
         agro = [
             {
                 season.start: {
@@ -38,7 +43,8 @@ class PcseAdapter:
                 }
             }
         ]
-        model = Wofost72_PP(params, pcse_provider(season.weather, season.site), agro)
+        weather = pcse_provider(season.weather, season.site, season.weather_source)
+        model = Wofost72_PP(params, weather, agro)
         model.run_till_terminate()
         frame = pd.DataFrame(model.get_output()).rename(
             columns={
@@ -56,7 +62,7 @@ class PcseAdapter:
         frame["variety"] = season.variety
         frame["source"] = "mechanistic_simulation"
         frame["engine"] = "pcse_wofost72_pp"
-        frame["weather_source"] = "synthetic_demo"
+        frame["weather_source"] = season.weather_source
         frame["management_regime"] = "potential_production"
         validate_trajectory(frame)
         return frame

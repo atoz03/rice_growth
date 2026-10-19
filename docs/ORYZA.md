@@ -21,7 +21,7 @@
 | `output/` | 原生结果 |
 | `normalized/trajectory.csv` | 标准化逐日状态 |
 
-将 `input/CONTROL.DAT.in` 中的路径替换后保存为 `input/CONTROL.DAT`。配置中的 `workdir`、`executable`、`asset_manifest` 和 `normalized_output` 相对于配置文件；`output` 相对于 `workdir`。
+将 `input/CONTROL.DAT.in` 中的路径替换后保存为 `input/CONTROL.DAT`。引擎以 80 字符读取文件名，`FILEI*` 路径不得超过该长度；以 `*` 开头的行和引号外 `!` 之后的内容视为注释。配置中的 `workdir`、`executable`、`asset_manifest` 和 `normalized_output` 相对于配置文件；`output` 相对于 `workdir`。
 
 填写 `assets.yaml` 的文件路径、来源及 SHA-256，并将 `run.yaml` 的 `season_id`、`year`、`site_id`、`variety` 设为案例值。按实际日表填写 `mapping`，确认后设置 `mapping_verified: true`。
 

@@ -8,6 +8,8 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
+import yaml
+
 from .schema import ROOT
 
 
@@ -67,16 +69,30 @@ def main():
             if not status["ready"]:
                 raise ValueError("；".join(status["run_blockers"]))
             config = load_config(args.config)
-            config.pop("asset_manifest", None)
-            config.pop("mapping_verified", None)
-            normalized_output = Path(config.pop("normalized_output"))
+            normalized_output = Path(config["normalized_output"])
             if normalized_output.exists():
                 raise ValueError(f"结果文件已存在：{normalized_output}")
-            frame = run_oryza(**config)
+            # 仅传入引擎参数，配置中的其他字段不影响调用。
+            frame = run_oryza(
+                **{
+                    key: config[key]
+                    for key in [
+                        "workdir",
+                        "executable",
+                        "output",
+                        "mapping",
+                        "season_id",
+                        "year",
+                        "site_id",
+                        "variety",
+                    ]
+                },
+                timeout=config.get("timeout", 300),
+            )
             normalized_output.parent.mkdir(parents=True, exist_ok=True)
             frame.to_csv(normalized_output, index=False)
             print(f"ORYZA 轨迹已保存：{normalized_output}")
-    except (ValueError, RuntimeError, OSError) as exc:
+    except (ValueError, RuntimeError, OSError, yaml.YAMLError) as exc:
         parser.exit(1, f"运行失败：{exc}\n")
 
 

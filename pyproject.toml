@@ -18,6 +18,9 @@ rice-growth = "rice_growth.cli:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[tool.setuptools.package-data]
+rice_growth = ["templates/oryza/**/*"]
+
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 
