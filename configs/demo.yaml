@@ -1,0 +1,33 @@
+# 全部为工程演示情景；天气、地块和土壤不代表真实试验。
+seed: 42
+years: [2021, 2022, 2023]
+varieties: [Rice_IR64, Rice_IR72]
+sites:
+  - id: demo_site_a
+    latitude: 18.0
+    longitude: 100.0
+    elevation_m: 50.0
+    temperature_offset_c: 0.0
+  - id: demo_site_b
+    latitude: 22.0
+    longitude: 98.0
+    elevation_m: 100.0
+    temperature_offset_c: -1.0
+crop:
+  start_month: 6
+  start_day: 1
+  max_duration_days: 180
+soil:
+  SMW: 0.12
+  SMFCF: 0.30
+  SM0: 0.45
+  CRAIRC: 0.06
+  RDMSOL: 100.0
+forecast:
+  history_days: 14
+  horizon_days: 7
+  stride_days: 7
+  ridge_alpha: 10.0
+  train_years: [2021]
+  validation_years: [2022]
+  test_years: [2023]

@@ -1,0 +1,11 @@
+.venv/
+external/
+artifacts/
+__pycache__/
+*.egg-info/
+.pytest_cache/
+.pcse/
+data/
+report.tex
+!.gitkeep
+report.tex

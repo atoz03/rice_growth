@@ -1,0 +1,20 @@
+# 仅描述接入契约；须先准备真实原生输入、编译产物和逐日输出格式。
+# 路径相对于执行命令时的工作目录；原生输出 output 相对于 workdir。
+workdir: artifacts/oryza_native_run
+executable: external/oryza_runtime/ricesim
+output: output/RES.DAT
+normalized_output: artifacts/oryza_normalized.csv
+season_id: supplied_site_2026_supplied_variety
+year: 2026
+site_id: supplied_site
+variety: supplied_variety
+timeout: 300
+# 映射必须依据实际日输出的表头核验；YEAR/DOY 是格式示例。
+# 如果表中有 ISO 日期列，可用 date: 日期列名，替代 year/day_of_year。
+mapping:
+  year: YEAR
+  day_of_year: DOY
+  lai_m2_m2: LAI
+  biomass_aboveground_kg_ha: WAGT
+  storage_organ_dry_kg_ha: WSO
+  dvs: DVS

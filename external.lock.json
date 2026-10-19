@@ -1,0 +1,14 @@
+{
+  "pcse": {
+    "url": "https://github.com/ajwdewit/pcse.git",
+    "commit": "67a28e56b0e34655f8d60b0b4a254a7c81efbb2f"
+  },
+  "ricesim_oryza": {
+    "url": "https://github.com/USDA-ARS-ACSL/RICESIM-ORYZA.git",
+    "commit": "81ef4347f13f919c6cc535aca0c6c54590341b48"
+  },
+  "wofost_crop_parameters": {
+    "url": "https://github.com/ajwdewit/WOFOST_crop_parameters.git",
+    "commit": "fc6eda46ea0081eb0ad31fa92ea49fea60e11075"
+  }
+}
