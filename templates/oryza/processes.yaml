@@ -1,0 +1,46 @@
+# 过程级移植材料登记；所有系数须附参数来源、单位及适用品种。
+team_model_name: null
+team_model_version: null
+processes:
+  phenology:
+    equations: null
+    parameter_source: null
+    units: null
+    reference_case: null
+    candidate_pcse_module: pcse.crop.phenology
+    ricesim_sources: [PHENOL2.f90, SUBDDB.f90]
+  photosynthesis:
+    equations: null
+    parameter_source: null
+    units: null
+    reference_case: null
+    candidate_pcse_module: pcse.crop.assimilation
+    ricesim_sources: [SGPL3.F90, photosynthesis.f90, StomatalConductance.f90, EnergyBalance.f90]
+  partitioning_and_growth:
+    equations: null
+    parameter_source: null
+    units: null
+    reference_case: null
+    candidate_pcse_module: pcse.crop.wofost72
+    ricesim_sources: [ORYZA1.f90]
+  leaf_area:
+    equations: null
+    parameter_source: null
+    units: null
+    reference_case: null
+    candidate_pcse_module: pcse.crop.leaf_dynamics
+    ricesim_sources: [SUBLAI5.f90]
+  water_and_nitrogen:
+    equations: null
+    parameter_source: null
+    units: null
+    reference_case: null
+    candidate_pcse_module: pcse.soil
+    ricesim_sources: [Paddy.f90, Ncrop2.f90, nsoil.f90, WStress.f90]
+  heat_stress_and_grain:
+    equations: null
+    parameter_source: null
+    units: null
+    reference_case: null
+    candidate_pcse_module: null
+    ricesim_sources: [SUBGRN5.f90]

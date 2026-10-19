@@ -2,7 +2,7 @@
 
 首版已跑通：**人工天气 → PCSE/WOFOST 水稻机理模拟 → 生育季分组 → 条件多步预测 → 评测与溯源**。
 
-这是根据本地研究报告搭建的研究工程起点。真实项目数据后续对齐；当前数据为人工天气与机理模拟标签，不能作为真实田间预测精度。研究报告保留本地，代码运行不依赖报告文件。
+当前优先目标是**学习 PCSE/WOFOST，并结合团队模型形成可开源的 Python 水稻机理模型**。RICESIM 提供过程参考，团队模型身份与材料仍待确认。已实现的数据与预测闭环作为运行和验证基础，真实项目数据后续对齐；当前数据为人工天气与机理模拟标签。研究报告保留本地，代码运行不依赖报告文件。
 
 ## 快速运行
 
@@ -17,6 +17,8 @@ python3 -m venv .venv
 .venv/bin/rice-growth doctor
 .venv/bin/rice-growth demo
 .venv/bin/python -m pytest -q --disable-warnings
+.venv/bin/ruff check .
+.venv/bin/ruff format --check .
 ```
 
 首次安装需联网，下载三个上游仓库和 Python 依赖；模拟阶段读取本地参数，不下载在线天气。`bootstrap.py` 验证上游版本及已跟踪源码，发现不符时停止。PCSE 首次导入会按上游行为创建用户目录下的 `.pcse` 配置和示例数据库。
@@ -37,6 +39,17 @@ python3 -m venv .venv
 
 ORYZA 接入说明见 [docs/ORYZA.md](docs/ORYZA.md)。两种引擎保留各自名称和原生物候定义，不能直接视为相同真值。
 
+## RICESIM 材料工作区
+
+```bash
+# 创建含资产、构建、理论与许可登记模板的独立目录，已有目录不会被覆盖
+.venv/bin/rice-growth oryza-prepare --output artifacts/oryza_native_run
+# 未填完的模板会给出结构化缺项并以退出码 1 结束，属于预期行为
+.venv/bin/rice-growth oryza-check --config artifacts/oryza_native_run/run.yaml
+```
+
+按照工作区 `README.md` 接收真实文件，填好 `assets.yaml`、`run.yaml` 和原生 `CONTROL.DAT` 后再运行 `oryza-run`。未知参数用 `null` 登记，不生成虚构 `.crp` 或土壤数据。完整材料清单和可转发的索取文本见 [docs/RICESIM_MATERIALS.md](docs/RICESIM_MATERIALS.md)。
+
 ## 输出
 
 每次运行生成独立目录 `artifacts/demo_<时间>/`：
@@ -54,12 +67,12 @@ ORYZA 接入说明见 [docs/ORYZA.md](docs/ORYZA.md)。两种引擎保留各自�
 
 ## 后续实现
 
-完整路线见 [docs/PLAN.md](docs/PLAN.md)，数据契约见 [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md)。按“机理数据与基线 → 校准同化 → 异步多模态 → MoE 与探测引导 PEFT → 泛化与部署”逐级推进。
+先按 [PCSE 学习与实现路线](docs/PCSE_STUDY.md)梳理过程、状态和单位，再实现团队模型与参考案例验证；整体路线见 [docs/PLAN.md](docs/PLAN.md)，数据契约见 [docs/DATA_CONTRACT.md](docs/DATA_CONTRACT.md)。多模态、MoE 和 PEFT 在机理模型可复现后推进。
 
 源码位于 `src/rice_growth/`，配置在 `configs/`。上游源码、虚拟环境和生成结果不纳入版本控制；三个上游提交固定在 `external.lock.json`，Python 依赖固定在 `requirements.lock.txt`。
 
 ## 验证记录
 
-首版完整示例生成 **12 个生育季、1107 条逐日状态、132 个预测窗口**；7 项测试通过，覆盖单位换算、缺测检查、未来目标隔离、年份互斥、ORYZA 缺项/格式解析及真实 PCSE 端到端执行。PCSE 的 traitlets 依赖会产生已知弃用警告，不影响本次运行。
+完整示例生成 **12 个生育季、1107 条逐日状态、132 个预测窗口**。测试覆盖单位换算、缺测检查、未来目标隔离、年份互斥、ORYZA 缺项/格式解析、材料工作区、资产哈希、配置相对路径、超时日志及真实 PCSE 端到端执行。PCSE 的 traitlets 依赖会产生已知弃用警告，不影响本次运行。
 
 上游来源：[PCSE](https://github.com/ajwdewit/pcse)、[WOFOST 水稻参数](https://github.com/ajwdewit/WOFOST_crop_parameters/tree/wofost72)、[RICESIM-ORYZA](https://github.com/USDA-ARS-ACSL/RICESIM-ORYZA)。上游许可和署名保留在各自下载目录中。

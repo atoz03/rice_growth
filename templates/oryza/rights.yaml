@@ -1,0 +1,11 @@
+# 记录取得的事实；null 表示尚未确认，不是拒绝授权。
+upstream_code_license: null
+upstream_code_license_evidence: null
+parameter_data_license: null
+parameter_data_license_evidence: null
+team_model_identity: null
+team_code_or_equations_permission: null
+team_permission_evidence: null
+redistribution_scope: null
+attribution_requirements: null
+reviewed_by: null

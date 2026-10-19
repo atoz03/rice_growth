@@ -1,7 +1,6 @@
 """验证量纲、信息边界、分组划分及真实 PCSE 执行链。"""
 
 from datetime import date
-from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -41,14 +40,29 @@ def trajectories():
         weather = synthetic_weather(date(year, 6, 1), 30, year)
         for i, name in enumerate(TARGETS):
             weather[name] = np.arange(30, dtype=float) * (i + 1) / 100
-        frames.append(weather.assign(season_id=str(year), year=year, site_id="test", variety="test",
-                                     source="mechanistic_simulation", engine="test", weather_source="synthetic_demo"))
+        frames.append(
+            weather.assign(
+                season_id=str(year),
+                year=year,
+                site_id="test",
+                variety="test",
+                source="mechanistic_simulation",
+                engine="test",
+                weather_source="synthetic_demo",
+            )
+        )
     return pd.concat(frames, ignore_index=True)
 
 
 def forecast():
-    return dict(history_days=5, horizon_days=3, stride_days=3,
-                train_years=[2021], validation_years=[2022], test_years=[2023])
+    return dict(
+        history_days=5,
+        horizon_days=3,
+        stride_days=3,
+        train_years=[2021],
+        validation_years=[2022],
+        test_years=[2023],
+    )
 
 
 def test_split_by_season_and_future_targets_never_enter_features():
@@ -82,12 +96,22 @@ def test_oryza_process_and_native_date_conversion(tmp_path):
     # 只验证进程边界和解析器，测试程序不冒充 ORYZA。
     (tmp_path / "input").mkdir()
     (tmp_path / "input/crop.crp").write_text("测试输入")
-    (tmp_path / "input/CONTROL.DAT").write_text("FILEI1='input/crop.crp'\n")
+    (tmp_path / "input/CONTROL.DAT").write_text(
+        "FILEI1='input/crop.crp'\nFILEI2='input/crop.crp'\nFILEIT='input/crop.crp'\n"
+    )
     executable = tmp_path / "format_fixture.sh"
-    executable.write_text("#!/bin/sh\ncat > daily.dat <<'EOF'\nYEAR DOY LAI WAGT WSO DVS\n2024 60 1 100 0 0.1\n2024 61 1.1 110 0 0.2\nEOF\n")
+    executable.write_text(
+        "#!/bin/sh\ncat > daily.dat <<'EOF'\nYEAR DOY LAI WAGT WSO DVS\n2024 60 1 100 0 0.1\n2024 61 1.1 110 0 0.2\nEOF\n"
+    )
     executable.chmod(0o700)
-    mapping = dict(year="YEAR", day_of_year="DOY", lai_m2_m2="LAI",
-                   biomass_aboveground_kg_ha="WAGT", storage_organ_dry_kg_ha="WSO", dvs="DVS")
+    mapping = dict(
+        year="YEAR",
+        day_of_year="DOY",
+        lai_m2_m2="LAI",
+        biomass_aboveground_kg_ha="WAGT",
+        storage_organ_dry_kg_ha="WSO",
+        dvs="DVS",
+    )
     frame = run_oryza(tmp_path, executable, "daily.dat", mapping, "test", 2024, "test", "test")
     assert frame.date.tolist() == [date(2024, 2, 29), date(2024, 3, 1)]
     assert (tmp_path / "runner.stdout.log").is_file()

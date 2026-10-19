@@ -1,0 +1,14 @@
+# 每一项由实际构建记录填写，不推断附带 .lib 的兼容性。
+source_commit: 81ef4347f13f919c6cc535aca0c6c54590341b48
+operating_system: null
+architecture: null
+compiler_name: null
+compiler_version: null
+compile_command: null
+link_command: null
+library_origins: null
+library_target_platform: null
+source_patches: null
+build_log: null
+executable_sha256: null
+verified_by: null

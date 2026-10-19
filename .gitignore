@@ -6,6 +6,5 @@ __pycache__/
 .pytest_cache/
 .pcse/
 data/
-report.tex
 !.gitkeep
 report.tex

@@ -17,8 +17,13 @@ def fit_ridge(x, y, alpha):
     centered = flat - target_mean
     # 使用样本维度的对偶形式，适合演示数据中少样本、多特征的情况。
     dual = np.linalg.solve(z @ z.T + alpha * np.eye(len(z)), centered)
-    return {"mean": mean, "scale": scale, "weights": z.T @ dual,
-            "target_mean": target_mean, "shape": np.array(y.shape[1:])}
+    return {
+        "mean": mean,
+        "scale": scale,
+        "weights": z.T @ dual,
+        "target_mean": target_mean,
+        "shape": np.array(y.shape[1:]),
+    }
 
 
 def predict_ridge(model, x):
@@ -33,10 +38,18 @@ def metrics(y, prediction, model_name, split):
             actual = y[:, h, v]
             err = prediction[:, h, v] - actual
             denominator = np.sum((actual - actual.mean()) ** 2)
-            rows.append({"model": model_name, "split": split, "horizon_day": h + 1,
-                         "variable": name, "n": len(actual), "mae": np.abs(err).mean(),
-                         "rmse": np.sqrt(np.mean(err ** 2)),
-                         "r2": 1 - np.sum(err ** 2) / denominator if denominator > 1e-12 else None})
+            rows.append(
+                {
+                    "model": model_name,
+                    "split": split,
+                    "horizon_day": h + 1,
+                    "variable": name,
+                    "n": len(actual),
+                    "mae": np.abs(err).mean(),
+                    "rmse": np.sqrt(np.mean(err**2)),
+                    "r2": 1 - np.sum(err**2) / denominator if denominator > 1e-12 else None,
+                }
+            )
     return pd.DataFrame(rows)
 
 
@@ -48,8 +61,9 @@ def evaluate(arrays, alpha, output):
         actual = arrays[f"{split}_y"]
         ridge = predict_ridge(model, arrays[f"{split}_x"])
         persistence = np.repeat(arrays[f"{split}_last"][:, None, :], actual.shape[1], axis=1)
-        np.savez_compressed(output / f"{split}_predictions.npz", actual=actual,
-                            ridge=ridge, persistence=persistence)
+        np.savez_compressed(
+            output / f"{split}_predictions.npz", actual=actual, ridge=ridge, persistence=persistence
+        )
         for name, prediction in [("ridge_direct", ridge), ("persistence", persistence)]:
             reports.append(metrics(actual, prediction, name, split))
     report = pd.concat(reports, ignore_index=True)

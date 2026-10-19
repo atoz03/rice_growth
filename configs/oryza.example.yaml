@@ -1,14 +1,16 @@
 # 仅描述接入契约；须先准备真实原生输入、编译产物和逐日输出格式。
-# 路径相对于执行命令时的工作目录；原生输出 output 相对于 workdir。
-workdir: artifacts/oryza_native_run
-executable: external/oryza_runtime/ricesim
+# 路径相对于此配置文件；先用 oryza-prepare 创建对应材料工作区。
+workdir: ../artifacts/oryza_native_run
+executable: ../artifacts/oryza_native_run/bin/ricesim
+asset_manifest: ../artifacts/oryza_native_run/assets.yaml
 output: output/RES.DAT
-normalized_output: artifacts/oryza_normalized.csv
-season_id: supplied_site_2026_supplied_variety
-year: 2026
-site_id: supplied_site
-variety: supplied_variety
+normalized_output: ../artifacts/oryza_native_run/normalized/trajectory.csv
+season_id: null
+year: null
+site_id: null
+variety: null
 timeout: 300
+mapping_verified: false
 # 映射必须依据实际日输出的表头核验；YEAR/DOY 是格式示例。
 # 如果表中有 ISO 日期列，可用 date: 日期列名，替代 year/day_of_year。
 mapping:

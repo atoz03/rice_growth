@@ -1,0 +1,19 @@
+workdir: .
+executable: bin/ricesim
+asset_manifest: assets.yaml
+output: output/RES.DAT
+normalized_output: normalized/trajectory.csv
+season_id: null
+year: null
+site_id: null
+variety: null
+timeout: 300
+# 实际表头确认后再改为 true；日期也可改用 date: ISO日期列名。
+mapping_verified: false
+mapping:
+  year: YEAR
+  day_of_year: DOY
+  lai_m2_m2: LAI
+  biomass_aboveground_kg_ha: WAGT
+  storage_organ_dry_kg_ha: WSO
+  dvs: DVS

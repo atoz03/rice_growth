@@ -14,15 +14,28 @@ def inspect_inputs(workdir):
     if not control.is_file():
         return {"ready": False, "missing": [str(control)], "references": {}}
     # 星号行是上游输入格式中的注释；只检查实际启用的 FILEI*。
-    active = "\n".join(line for line in control.read_text(errors="replace").splitlines()
-                       if not line.lstrip().startswith("*"))
+    active = "\n".join(
+        line
+        for line in control.read_text(errors="replace").splitlines()
+        if not line.lstrip().startswith("*")
+    )
     references = dict(re.findall(r"\b(FILEI\w*)\s*=\s*'([^']+)'", active, re.I))
     missing = []
     for value in references.values():
         path = Path(value)
-        if re.match(r"^[A-Za-z]:[/\\]", value) or not (path if path.is_absolute() else Path(workdir) / path).is_file():
+        if (
+            re.match(r"^[A-Za-z]:[/\\]", value)
+            or not (path if path.is_absolute() else Path(workdir) / path).is_file()
+        ):
             missing.append(value)
-    return {"ready": bool(references) and not missing, "missing": missing, "references": references}
+    required_missing = sorted({"FILEIT", "FILEI1", "FILEI2"} - {key.upper() for key in references})
+    # 完整性仍须由真实引擎验证；此处至少不能把单个输入文件当作完整案例。
+    return {
+        "ready": not required_missing and not missing,
+        "missing": missing,
+        "required_fields_missing": required_missing,
+        "references": references,
+    }
 
 
 def run_oryza(workdir, executable, output, mapping, season_id, year, site_id, variety, timeout=300):
@@ -39,10 +52,24 @@ def run_oryza(workdir, executable, output, mapping, season_id, year, site_id, va
         raise ValueError(f"缺少 ORYZA 可执行文件：{executable}")
     if output.exists():
         raise ValueError("输出已存在，请使用独立的新运行目录，避免误读旧结果")
-    if set(TARGETS) - set(mapping) or not ("date" in mapping or {"year", "day_of_year"} <= set(mapping)):
+    if set(TARGETS) - set(mapping) or not (
+        "date" in mapping or {"year", "day_of_year"} <= set(mapping)
+    ):
         raise ValueError("输出映射须包含全部核心状态，以及 date 或 year/day_of_year")
-    result = subprocess.run([str(executable)], cwd=workdir, capture_output=True, text=True,
-                            timeout=timeout, check=False)
+    try:
+        result = subprocess.run(
+            [str(executable)],
+            cwd=workdir,
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+            check=False,
+        )
+    except subprocess.TimeoutExpired as exc:
+        for name, content in [("stdout", exc.stdout), ("stderr", exc.stderr)]:
+            text = content.decode(errors="replace") if isinstance(content, bytes) else content or ""
+            (workdir / f"runner.{name}.log").write_text(text)
+        raise RuntimeError(f"ORYZA 运行超过 {timeout} 秒；已保留日志") from exc
     (workdir / "runner.stdout.log").write_text(result.stdout)
     (workdir / "runner.stderr.log").write_text(result.stderr)
     if result.returncode:
@@ -50,23 +77,36 @@ def run_oryza(workdir, executable, output, mapping, season_id, year, site_id, va
     if not output.is_file():
         raise RuntimeError(f"ORYZA 未生成指定逐日结果：{output}")
     raw = pd.read_csv(output, sep=r"\s+", comment="*")
+    missing_columns = set(mapping.values()) - set(raw.columns)
+    if missing_columns:
+        raise ValueError(f"逐日结果缺少映射列：{sorted(missing_columns)}")
     frame = pd.DataFrame({k: raw[mapping[k]] for k in TARGETS})
     if "date" in mapping:
-        frame["date"] = pd.to_datetime(raw[mapping["date"]], format="%Y-%m-%d", errors="raise").dt.date
+        frame["date"] = pd.to_datetime(
+            raw[mapping["date"]], format="%Y-%m-%d", errors="raise"
+        ).dt.date
     else:
         years = pd.to_numeric(raw[mapping["year"]], errors="raise")
         doy = pd.to_numeric(raw[mapping["day_of_year"]], errors="raise")
         if (years % 1 != 0).any() or (doy % 1 != 0).any() or not doy.between(1, 366).all():
             raise ValueError("年份和年积日必须为合法整数")
-        dates = pd.to_datetime(years.astype(int).astype(str), format="%Y") + pd.to_timedelta(doy - 1, unit="D")
+        dates = pd.to_datetime(years.astype(int).astype(str), format="%Y") + pd.to_timedelta(
+            doy - 1, unit="D"
+        )
         if not dates.dt.year.eq(years).all():
             raise ValueError("年积日超过该年份的天数")
         frame["date"] = dates.dt.date
     if len(frame) < 2:
         raise ValueError("ORYZA 日轨迹不足两日，不能使用季末汇总作为轨迹")
-    frame = frame.assign(season_id=season_id, year=year, site_id=site_id, variety=variety,
-                         source="mechanistic_simulation", engine="ricesim_oryza",
-                         weather_source="user_supplied")
+    frame = frame.assign(
+        season_id=season_id,
+        year=year,
+        site_id=site_id,
+        variety=variety,
+        source="mechanistic_simulation",
+        engine="ricesim_oryza",
+        weather_source="user_supplied",
+    )
     validate_trajectory(frame)
     return frame
 
@@ -75,12 +115,18 @@ class OryzaAdapter:
     """使用已准备好的原生运行目录；天气、土壤和管理原生文件由调用方提供。"""
 
     def __init__(self, workdir, executable, output, mapping, timeout=300):
-        self.options = dict(workdir=workdir, executable=executable, output=output,
-                            mapping=mapping, timeout=timeout)
+        self.options = dict(
+            workdir=workdir, executable=executable, output=output, mapping=mapping, timeout=timeout
+        )
 
     def simulate(self, season):
-        frame = run_oryza(**self.options, season_id=season.season_id, year=season.start.year,
-                          site_id=season.site["id"], variety=season.variety)
+        frame = run_oryza(
+            **self.options,
+            season_id=season.season_id,
+            year=season.start.year,
+            site_id=season.site["id"],
+            variety=season.variety,
+        )
         weather = season.weather.copy()
         weather["date"] = pd.to_datetime(weather.date).dt.date
         # 共同数据结构用于下游；此处不会把通用天气自动写成未经验证的原生格式。

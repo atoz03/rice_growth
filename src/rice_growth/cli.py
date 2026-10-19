@@ -33,18 +33,42 @@ def main():
     demo.add_argument("--output", type=Path, default=None)
     oryza = sub.add_parser("oryza-run", help="调用已有 ORYZA 可执行程序，转换已定义格式的逐日结果")
     oryza.add_argument("--config", type=Path, required=True)
+    prepare = sub.add_parser("oryza-prepare", help="创建独立的 RICESIM 材料工作区")
+    prepare.add_argument("--output", type=Path, required=True)
+    check = sub.add_parser("oryza-check", help="检查材料、输入和运行配置；未就绪返回非零退出码")
+    check.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
     try:
         if args.command == "doctor":
             print(json.dumps(doctor(), ensure_ascii=False, indent=2))
         elif args.command == "demo":
             from .pipeline import run_demo
-            output = args.output or ROOT / "artifacts" / datetime.now().strftime("demo_%Y%m%d_%H%M%S_%f")
+
+            output = args.output or ROOT / "artifacts" / datetime.now().strftime(
+                "demo_%Y%m%d_%H%M%S_%f"
+            )
             run_demo(args.config, output)
+        elif args.command == "oryza-prepare":
+            from .oryza_workspace import prepare_workspace
+
+            print(f"材料工作区已创建：{prepare_workspace(args.output)}")
+        elif args.command == "oryza-check":
+            from .oryza_workspace import check_workspace
+
+            status = check_workspace(args.config)
+            print(json.dumps(status, ensure_ascii=False, indent=2))
+            if not status["ready"]:
+                parser.exit(1)
         else:
-            import yaml
             from .adapters.oryza import run_oryza
-            config = yaml.safe_load(args.config.read_text())
+            from .oryza_workspace import check_workspace, load_config
+
+            status = check_workspace(args.config)
+            if not status["ready"]:
+                raise ValueError("；".join(status["run_blockers"]))
+            config = load_config(args.config)
+            config.pop("asset_manifest", None)
+            config.pop("mapping_verified", None)
             normalized_output = Path(config.pop("normalized_output"))
             if normalized_output.exists():
                 raise ValueError(f"结果文件已存在：{normalized_output}")
@@ -52,7 +76,7 @@ def main():
             normalized_output.parent.mkdir(parents=True, exist_ok=True)
             frame.to_csv(normalized_output, index=False)
             print(f"ORYZA 轨迹已保存：{normalized_output}")
-    except (ValueError, RuntimeError, FileNotFoundError) as exc:
+    except (ValueError, RuntimeError, OSError) as exc:
         parser.exit(1, f"运行失败：{exc}\n")
 
 

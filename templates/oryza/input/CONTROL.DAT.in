@@ -1,0 +1,13 @@
+* 材料模板：填入真实路径后另存为 CONTROL.DAT，不能直接运行本文件。
+* 参数数值仅保留输出格式；不提供任何虚构品种、土壤或管理参数。
+FILEON = 'output/RES.DAT'
+FILEOL = 'output/MODEL.LOG'
+FILEIR = '{{rerun_file}}'
+FILEIT = '{{management_file}}'
+FILEI1 = '{{crop_file}}'
+FILEI2 = '{{soil_file}}'
+PRDEL = 1.
+IPFORM = 5
+COPINF = 'N'
+DELTMP = 'Y'
+IFLAG = 1100

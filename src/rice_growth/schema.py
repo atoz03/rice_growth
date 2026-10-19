@@ -10,7 +10,14 @@ import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
 TARGETS = ["lai_m2_m2", "biomass_aboveground_kg_ha", "storage_organ_dry_kg_ha", "dvs"]
-WEATHER = ["tmin_c", "tmax_c", "radiation_mj_m2_day", "rain_mm_day", "vapour_pressure_kpa", "wind_m_s"]
+WEATHER = [
+    "tmin_c",
+    "tmax_c",
+    "radiation_mj_m2_day",
+    "rain_mm_day",
+    "vapour_pressure_kpa",
+    "wind_m_s",
+]
 
 
 @dataclass
@@ -60,7 +67,10 @@ def validate_trajectory(frame):
         raise ValueError("核心状态必须非负且有限")
     for _, season in frame.groupby("season_id"):
         dates = pd.to_datetime(season.date)
-        if not dates.is_monotonic_increasing or not dates.diff().iloc[1:].eq(pd.Timedelta(days=1)).all():
+        if (
+            not dates.is_monotonic_increasing
+            or not dates.diff().iloc[1:].eq(pd.Timedelta(days=1)).all()
+        ):
             raise ValueError("轨迹必须按日连续递增")
         if (season.dvs.diff().dropna() < -1e-8).any():
             raise ValueError("生育进程发生倒退")
