@@ -1,43 +1,27 @@
-# 路径均相对于此清单。不得将说明文件或格式夹具登记为真实模型资产。
+# path 相对于此文件；sha256 为文件的 SHA-256 十六进制值。
 schema_version: 1
 assets:
   crop:
     path: null
     source: null
     sha256: null
-    description: 含 RICESIM 扩展参数的真实品种文件，原案例为 xl753.crp
   management:
     path: null
     source: null
     sha256: null
-    description: 原案例管理与试验配置 manage.xl753.exp，含运行日期及天气引用
   soil:
     path: null
     source: null
     sha256: null
-    description: 原案例 PADDYIN-AR-LA.DAT 或与所选土壤过程匹配的真实参数
   rerun:
     path: null
     source: null
     sha256: null
-    description: 原案例 reruns.test.2000.dat；单次运行禁用需先核对引擎再调整模板
   weather:
     path: null
     source: null
     sha256: null
-    description: 与案例站点和年份匹配的原生天气；上游 CIAB1.000 不能自动认定匹配
   executable:
     path: null
     source: null
     sha256: null
-    description: 与当前平台及源码匹配的可执行程序
-  reference_daily:
-    path: null
-    source: null
-    sha256: null
-    description: 同一组输入产生的原始逐日日表，用于数值对照
-  reference_summary:
-    path: null
-    source: null
-    sha256: null
-    description: 同一案例季末汇总；上游 op.dat 与当前输入的对应关系尚未确认

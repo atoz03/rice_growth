@@ -25,17 +25,17 @@ def doctor():
 
 
 def main():
-    parser = argparse.ArgumentParser(description="水稻机理与预测研究管线")
+    parser = argparse.ArgumentParser(description="水稻机理模拟与生长轨迹预测")
     sub = parser.add_subparsers(dest="command", required=True)
     sub.add_parser("doctor", help="检查依赖和 ORYZA 输入缺项")
-    demo = sub.add_parser("demo", help="执行人工天气、WOFOST 水稻模拟与多步预测闭环")
+    demo = sub.add_parser("demo", help="运行 WOFOST 水稻模拟与多步预测示例")
     demo.add_argument("--config", type=Path, default=ROOT / "configs/demo.yaml")
     demo.add_argument("--output", type=Path, default=None)
-    oryza = sub.add_parser("oryza-run", help="调用已有 ORYZA 可执行程序，转换已定义格式的逐日结果")
+    oryza = sub.add_parser("oryza-run", help="运行 ORYZA 并转换逐日结果")
     oryza.add_argument("--config", type=Path, required=True)
-    prepare = sub.add_parser("oryza-prepare", help="创建独立的 RICESIM 材料工作区")
+    prepare = sub.add_parser("oryza-prepare", help="创建 RICESIM 运行目录")
     prepare.add_argument("--output", type=Path, required=True)
-    check = sub.add_parser("oryza-check", help="检查材料、输入和运行配置；未就绪返回非零退出码")
+    check = sub.add_parser("oryza-check", help="检查输入和运行配置")
     check.add_argument("--config", type=Path, required=True)
     args = parser.parse_args()
     try:
@@ -51,7 +51,7 @@ def main():
         elif args.command == "oryza-prepare":
             from .oryza_workspace import prepare_workspace
 
-            print(f"材料工作区已创建：{prepare_workspace(args.output)}")
+            print(f"运行目录已创建：{prepare_workspace(args.output)}")
         elif args.command == "oryza-check":
             from .oryza_workspace import check_workspace
 

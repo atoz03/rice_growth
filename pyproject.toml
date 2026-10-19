@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "rice-growth"
 version = "0.1.0"
-description = "水稻机理模拟、训练样本构建与生长轨迹预测管线"
+description = "水稻机理模拟与生长轨迹预测"
 requires-python = ">=3.10"
 dependencies = ["numpy>=1.24", "pandas>=2.0", "PyYAML>=6.0", "pcse==6.0.13"]
 

@@ -33,7 +33,7 @@ class Season:
 
 class MechanisticAdapter(Protocol):
     def simulate(self, season: Season) -> pd.DataFrame:
-        """返回逐日标准轨迹；不支持的变量保持缺失，不构造伪观测。"""
+        """返回逐日标准轨迹。"""
         ...
 
 

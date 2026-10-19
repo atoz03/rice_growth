@@ -1,4 +1,4 @@
-# Python 3.11 环境中已验证的依赖；PCSE 从 external.lock.json 指定源码单独安装。
+# Python 3.11；PCSE 按 external.lock.json 单独安装。
 certifi==2026.10.18
 charset-normalizer==3.5.2
 decorator==5.3.1

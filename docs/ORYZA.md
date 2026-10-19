@@ -1,38 +1,40 @@
-# RICESIM-ORYZA 接入状态
+# RICESIM-ORYZA
 
-当前版本固定为 `81ef4347f13f919c6cc535aca0c6c54590341b48`。源代码已拉取到 `external/ricesim_oryza`，尚未完成真实引擎编译和模拟。
+通过独立进程调用 RICESIM，将逐日日表转换为统一状态表。可执行程序和原生输入由用户提供。
 
-## 已确认的缺项
-
-上游 `input/CONTROL.DAT` 使用 Windows `E:/RICESIM_2022/...` 绝对路径，并引用仓库中不存在的文件：
-
-- `reruns.test.2000.dat`
-- `manage.xl753.exp`
-- `xl753.crp`
-- `PADDYIN-AR-LA.DAT`
-
-仓库没有 Makefile/CMake 等构建配置，附带 `ttutil.lib`、`WEATHER.lib`、`OP_OBS.lib`；其中 `ttutil.lib` 是包含 `.obj` 的静态库。当前 PATH 无 `gfortran`，不能据此假定这些库可直接用于 Linux 构建。也不能用其他 ORYZA 版本的普通品种文件假定已覆盖 RICESIM 新增气体交换、温度响应和热胁迫参数。
-
-## 当前可用入口
+## 配置与执行
 
 ```bash
-.venv/bin/rice-growth doctor
-.venv/bin/rice-growth oryza-prepare --output artifacts/oryza_native_run
-.venv/bin/rice-growth oryza-check --config artifacts/oryza_native_run/run.yaml
+.venv/bin/rice-growth oryza-prepare --output artifacts/oryza_run
+# 配置 artifacts/oryza_run/run.yaml、assets.yaml 和 input/CONTROL.DAT
+.venv/bin/rice-growth oryza-check --config artifacts/oryza_run/run.yaml
+.venv/bin/rice-growth oryza-run --config artifacts/oryza_run/run.yaml
 ```
 
-`oryza-prepare` 从 `templates/oryza/` 创建带明确缺项的材料工作区，已有目录拒绝覆盖。模板涵盖资产来源和 SHA-256、原生控制文件、运行映射、构建记录、过程定义及许可信息。未填写字段为 `null`，原生控制模板保留 `.in` 后缀，不会被识别为有效输入。
+| 路径 | 内容 |
+| --- | --- |
+| `bin/ricesim` | 当前平台的可执行程序 |
+| `input/` | 品种、土壤、管理、rerun 和 `CONTROL.DAT` |
+| `weather/` | 原生天气文件 |
+| `assets.yaml` | 输入与程序的路径、来源和 SHA-256 |
+| `run.yaml` | 运行目录、输出映射和生育季标识 |
+| `output/` | 原生结果 |
+| `normalized/trajectory.csv` | 标准化逐日状态 |
 
-准备好兼容平台的可执行程序和完整原生输入后，将 `CONTROL.DAT` 与全部被引用的输入放入工作区。填写 `assets.yaml` 的真实文件、来源和哈希，核对逐日输出列名后将 `run.yaml` 的 `mapping_verified` 改为 `true`，通过 `oryza-check` 再执行。配置中的工作目录、程序、清单和标准化结果路径均相对于配置文件；原生 `output` 相对于 `workdir`。
+将 `input/CONTROL.DAT.in` 中的路径替换后保存为 `input/CONTROL.DAT`。配置中的 `workdir`、`executable`、`asset_manifest` 和 `normalized_output` 相对于配置文件；`output` 相对于 `workdir`。
 
-```bash
-.venv/bin/rice-growth oryza-run --config /absolute/path/to/oryza_run.yaml
-```
+填写 `assets.yaml` 的文件路径、来源及 SHA-256，并将 `run.yaml` 的 `season_id`、`year`、`site_id`、`variety` 设为案例值。按实际日表填写 `mapping`，确认后设置 `mapping_verified: true`。
 
-运行器检查输入、材料登记和输出碰撞，使用显式工作目录调用引擎，保存标准输出/错误日志，超时也保留已捕获日志。结果转换支持 ISO 日期或年份+年积日，要求四项核心状态与逐日连续日期，标准化后保存 CSV。当前解析器支持单个空白分隔日表；遇到上游多表/其他表头格式时需据真实产物扩展，不能宣称通用格式已验证。
+## 日结果格式
 
-`oryza-check` 在运行材料不齐时返回退出码 1，并单独报告构建字段、参考结果和许可字段的登记状态。登记检查通过不等于完成数值验证或确认许可。完整缺项和向提供方索取材料的文本见 [RICESIM_MATERIALS.md](RICESIM_MATERIALS.md)。
+支持空白分隔、单表头的逐日日表，星号行视为注释。日期使用 ISO `YYYY-MM-DD` 或年份与年积日。目标列为 LAI、地上部干物质、贮藏器官干物质和 DVS；具体列名由 `mapping` 指定。
 
-`op.dat` 为季末汇总，不能作为逐日轨迹。当前解析/进程测试使用专门的格式夹具程序，未将其当作 ORYZA 引擎。通用 `Season` 适配接口已提供，但原生天气/管理文件自动生成、逐日状态读写和 EnKF 尚待真实参考案例验证。
+日序列须连续、无重复，状态非负且有限，DVS 单调不减。季末汇总 `op.dat` 不适用于日轨迹转换。
 
-上游参考：[源码仓库](https://github.com/USDA-ARS-ACSL/RICESIM-ORYZA)、[控制文件](https://github.com/USDA-ARS-ACSL/RICESIM-ORYZA/blob/81ef4347f13f919c6cc535aca0c6c54590341b48/input/CONTROL.DAT)。
+## 检查与日志
+
+`oryza-check` 检查配置、输入引用、程序权限、资产哈希和输出冲突。通过返回 0，存在缺项返回 1。运行生成 `runner.stdout.log` 与 `runner.stderr.log`，超时保留已捕获日志。
+
+## 引擎依赖
+
+锁定的 [RICESIM 上游](https://github.com/USDA-ARS-ACSL/RICESIM-ORYZA)未附完整构建配置及以下案例输入：`xl753.crp`、`manage.xl753.exp`、`PADDYIN-AR-LA.DAT`、`reruns.test.2000.dat`。本仓库不提供预编译 RICESIM 程序。

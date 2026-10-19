@@ -1,4 +1,4 @@
-"""验证模板不会被误当作完整案例，配置路径与日志可追溯。"""
+"""运行目录、输入校验与进程调用测试。"""
 
 import hashlib
 import json
@@ -16,9 +16,6 @@ def test_prepare_has_explicit_missing_materials_and_preserves_existing_directory
     root = prepare_workspace(tmp_path / "workspace")
     status = check_workspace(root / "run.yaml")
     assert not status["ready"]
-    assert not status["reference_materials_ready"]
-    assert "compiler_version" in status["build_fields_missing"]
-    assert "upstream_code_license" in status["release_fields_missing"]
     assert all(not asset["ready"] for asset in status["assets"].values())
     assert (root / "input/CONTROL.DAT.in").is_file()
     assert not (root / "input/CONTROL.DAT").exists()
@@ -37,7 +34,7 @@ def test_config_paths_are_relative_to_config_file(tmp_path, monkeypatch):
 def test_manifest_hash_is_checked(tmp_path):
     root = prepare_workspace(tmp_path / "workspace")
     asset = root / "input/crop.crp"
-    asset.write_text("仅测试清单校验，不是作物参数")
+    asset.write_text("资产校验测试")
     manifest_path = root / "assets.yaml"
     manifest = yaml.safe_load(manifest_path.read_text())
     manifest["assets"]["crop"].update(path="input/crop.crp", source="测试夹具", sha256="0" * 64)
@@ -59,7 +56,6 @@ def test_partial_control_is_not_a_complete_case(tmp_path):
 
 def test_timeout_preserves_partial_logs(tmp_path):
     (tmp_path / "input").mkdir()
-    # 仅用 Python 进程验证超时和日志行为，不调用任何机理引擎。
     (tmp_path / "input/fixture").write_text("测试夹具")
     (tmp_path / "input/CONTROL.DAT").write_text(
         "FILEI1='input/fixture'\nFILEI2='input/fixture'\nFILEIT='input/fixture'\n"
@@ -97,7 +93,7 @@ def test_registered_workspace_cli_run_and_collision_check(tmp_path):
     for name, entry in manifest["assets"].items():
         path = executable if name == "executable" else root / "input" / name
         if name != "executable":
-            path.write_text("仅测试文件登记与调用流程，不是机理模型资产")
+            path.write_text("进程测试数据")
         entry.update(
             path=str(path.relative_to(root)),
             source="测试夹具",

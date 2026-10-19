@@ -15,7 +15,7 @@ def fit_ridge(x, y, alpha):
     flat = y.reshape(len(y), -1)
     target_mean = flat.mean(axis=0)
     centered = flat - target_mean
-    # 使用样本维度的对偶形式，适合演示数据中少样本、多特征的情况。
+    # 使用样本维度的对偶形式，适用于少样本、多特征输入。
     dual = np.linalg.solve(z @ z.T + alpha * np.eye(len(z)), centered)
     return {
         "mean": mean,

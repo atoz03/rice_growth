@@ -93,7 +93,7 @@ def test_oryza_identifies_missing_real_inputs(tmp_path):
 
 
 def test_oryza_process_and_native_date_conversion(tmp_path):
-    # 只验证进程边界和解析器，测试程序不冒充 ORYZA。
+    # 日表解析测试程序。
     (tmp_path / "input").mkdir()
     (tmp_path / "input/crop.crp").write_text("测试输入")
     (tmp_path / "input/CONTROL.DAT").write_text(

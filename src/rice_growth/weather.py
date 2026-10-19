@@ -46,7 +46,7 @@ def pcse_provider(weather, site):
     provider.latitude = site["latitude"]
     provider.longitude = site["longitude"]
     provider.elevation = site["elevation_m"]
-    provider.description = ["工程演示人工天气；非实测与非预报"]
+    provider.description = ["人工天气"]
     for row in weather.itertuples(index=False):
         day = pd.Timestamp(row.date).date()
         values = pcse_weather_values(row)

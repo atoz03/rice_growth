@@ -40,7 +40,7 @@ def build_windows(trajectories, forecast):
             )
             y = future[TARGETS].to_numpy(float)
             if not np.isfinite(x).all() or not np.isfinite(y).all():
-                raise ValueError("窗口包含缺失值；真实观测接入时须使用掩码，不能隐式填零")
+                raise ValueError("窗口包含缺失值")
             index = len(payload[split]["x"])
             payload[split]["x"].append(x)
             payload[split]["y"].append(y)

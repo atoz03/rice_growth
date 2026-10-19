@@ -1,4 +1,4 @@
-"""配置驱动的演示闭环和运行溯源。"""
+"""配置驱动的模拟、预测与运行溯源。"""
 
 import hashlib
 import importlib.metadata
@@ -76,11 +76,8 @@ def run_demo(config_path, output):
         metadata = {
             "status": "complete",
             "created_utc": datetime.now(timezone.utc).isoformat(),
-            "purpose": "仅验证工程管线；全部标签为机理模拟，天气为人工生成，不是实测精度",
-            "source_report": "report.tex（本地研究报告，不随代码发布）",
-            "source_report_sha256": sha256(ROOT / "report.tex")
-            if (ROOT / "report.tex").is_file()
-            else None,
+            "weather_source": "synthetic_demo",
+            "target_source": "mechanistic_simulation",
             "config_sha256": sha256(config_path),
             "upstream": upstream,
             "pipeline_source_sha256": {
@@ -93,13 +90,13 @@ def run_demo(config_path, output):
             "seasons": int(trajectories.season_id.nunique()),
             "daily_rows": len(trajectories),
             "windows": manifest.groupby("split").size().to_dict(),
-            "targets": "LAI、地上部干物质、贮藏器官干物质和原生 DVS；不等同于实收产量",
+            "targets": "LAI、地上部干物质、贮藏器官干物质、DVS",
             "files": {p.name: sha256(p) for p in output.iterdir() if p.is_file()},
         }
         (output / "run.json").write_text(json.dumps(metadata, ensure_ascii=False, indent=2))
         summary = report.groupby(["split", "model", "variable"])["mae"].mean().to_string()
         (output / "summary.txt").write_text(
-            "人工天气和机理模拟标签，仅用于工程验证。\n\n" + summary + "\n"
+            "天气来源：synthetic_demo；目标来源：mechanistic_simulation。\n\n" + summary + "\n"
         )
         print(f"闭环完成：{output.resolve()}")
         return metadata

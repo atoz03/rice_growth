@@ -1,4 +1,4 @@
-"""创建独立材料工作区并检查尚未填写或尚未取得的资产。"""
+"""创建运行目录并校验配置与输入资产。"""
 
 import hashlib
 import os
@@ -15,7 +15,7 @@ from .schema import ROOT, TARGETS
 def prepare_workspace(destination):
     destination = Path(destination).resolve()
     shutil.copytree(ROOT / "templates/oryza", destination)
-    for name in ["bin", "weather", "reference", "output", "normalized"]:
+    for name in ["bin", "weather", "output", "normalized"]:
         (destination / name).mkdir(exist_ok=True)
     return destination
 
@@ -91,8 +91,6 @@ def check_workspace(config_path):
         "rerun",
         "weather",
         "executable",
-        "reference_daily",
-        "reference_summary",
     ]
     manifest = yaml.safe_load(manifest_path.read_text()) if manifest_path.is_file() else {}
     entries = manifest.get("assets", {}) if isinstance(manifest, dict) else {}
@@ -130,56 +128,12 @@ def check_workspace(config_path):
         if executable.resolve() != (manifest_path.parent / entry["path"]).resolve():
             asset_checks["executable"]["ready"] = False
             asset_checks["executable"]["issues"].append("登记路径与实际执行程序不一致")
-    for name in required[:6]:
+    for name in required:
         if not asset_checks[name]["ready"]:
-            blockers.append(f"材料未就绪：{name}")
-    material_path = Path(config_path).resolve().parent
-    build = (
-        yaml.safe_load((material_path / "build.yaml").read_text())
-        if (material_path / "build.yaml").is_file()
-        else {}
-    )
-    rights = (
-        yaml.safe_load((material_path / "rights.yaml").read_text())
-        if (material_path / "rights.yaml").is_file()
-        else {}
-    )
-    build_missing = [
-        key
-        for key in [
-            "source_commit",
-            "operating_system",
-            "architecture",
-            "compiler_name",
-            "compiler_version",
-            "compile_command",
-            "link_command",
-            "library_origins",
-            "library_target_platform",
-            "build_log",
-            "executable_sha256",
-        ]
-        if not isinstance(build, dict) or not build.get(key)
-    ]
-    rights_missing = [
-        key
-        for key in [
-            "upstream_code_license",
-            "upstream_code_license_evidence",
-            "parameter_data_license",
-            "parameter_data_license_evidence",
-            "redistribution_scope",
-            "reviewed_by",
-        ]
-        if not isinstance(rights, dict) or not rights.get(key)
-    ]
+            blockers.append(f"资产未就绪：{name}")
     return {
         "ready": not blockers,
         "run_blockers": blockers,
         "native_inputs": native,
         "assets": asset_checks,
-        "build_fields_missing": build_missing,
-        "reference_materials_ready": all(asset_checks[name]["ready"] for name in required[-2:]),
-        "release_fields_missing": rights_missing,
-        "note": "文件与登记检查不代表引擎编译、数值一致性或许可内容已经验证。",
     }

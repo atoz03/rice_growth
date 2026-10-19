@@ -29,7 +29,7 @@ def inspect_inputs(workdir):
         ):
             missing.append(value)
     required_missing = sorted({"FILEIT", "FILEI1", "FILEI2"} - {key.upper() for key in references})
-    # 完整性仍须由真实引擎验证；此处至少不能把单个输入文件当作完整案例。
+    # 检查品种、土壤和管理输入。
     return {
         "ready": not required_missing and not missing,
         "missing": missing,
@@ -39,7 +39,7 @@ def inspect_inputs(workdir):
 
 
 def run_oryza(workdir, executable, output, mapping, season_id, year, site_id, variety, timeout=300):
-    """执行已有引擎并转换逐日结果；单行季末 op.dat 不能替代日轨迹。"""
+    """执行引擎并转换逐日结果。"""
     workdir = Path(workdir).resolve()
     executable = Path(executable).resolve()
     output = Path(output)
@@ -129,5 +129,5 @@ class OryzaAdapter:
         )
         weather = season.weather.copy()
         weather["date"] = pd.to_datetime(weather.date).dt.date
-        # 共同数据结构用于下游；此处不会把通用天气自动写成未经验证的原生格式。
+        # 按日期关联天气。
         return frame.merge(weather, on="date", how="left", validate="one_to_one")

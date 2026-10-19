@@ -1,5 +1,4 @@
-* 材料模板：填入真实路径后另存为 CONTROL.DAT，不能直接运行本文件。
-* 参数数值仅保留输出格式；不提供任何虚构品种、土壤或管理参数。
+* 替换输入路径后另存为 CONTROL.DAT。
 FILEON = 'output/RES.DAT'
 FILEOL = 'output/MODEL.LOG'
 FILEIR = '{{rerun_file}}'
