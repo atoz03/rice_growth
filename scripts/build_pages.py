@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 TARGETS = ["lai_m2_m2", "biomass_aboveground_kg_ha", "storage_organ_dry_kg_ha", "dvs"]
+WEATHER = ["tmin_c", "tmax_c", "radiation_mj_m2_day", "rain_mm_day"]
 
 
 def _round(values, digits: int = 4) -> list[float]:
@@ -34,6 +35,7 @@ def build(run_dir: Path) -> dict:
                 "variety": g["variety"].iloc[0],
                 "start": g["date"].iloc[0].strftime("%Y-%m-%d"),
                 "series": {t: _round(g[t].fillna(0.0)) for t in TARGETS},
+                "weather": {w: _round(g[w], 3) for w in WEATHER},
             }
         )
 
